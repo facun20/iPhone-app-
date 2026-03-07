@@ -2,17 +2,17 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var authManager: AuthorizationManager
+    @EnvironmentObject var healthService: HealthKitService
 
     var body: some View {
         NavigationStack {
             List {
-                // About
                 Section("About") {
                     HStack {
-                        Image(systemName: "camera.viewfinder")
+                        Image(systemName: "lock.open.rotation")
                             .foregroundColor(.purple)
                         VStack(alignment: .leading) {
-                            Text("FocusSnap")
+                            Text("EarnIt")
                                 .font(.headline)
                             Text("by infinit3 Development")
                                 .font(.caption)
@@ -24,51 +24,59 @@ struct SettingsView: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.0.0")
-                            .foregroundColor(.secondary)
+                        Text("1.0.0").foregroundColor(.secondary)
                     }
                 }
 
-                // Screen Time
-                Section("Screen Time") {
+                Section("Permissions") {
                     HStack {
-                        Text("Authorization Status")
+                        Text("Screen Time")
                         Spacer()
                         Text(authManager.isAuthorized ? "Authorized" : "Not Authorized")
                             .foregroundColor(authManager.isAuthorized ? .green : .red)
                     }
 
+                    HStack {
+                        Text("HealthKit")
+                        Spacer()
+                        Text(healthService.isAuthorized ? "Authorized" : "Not Authorized")
+                            .foregroundColor(healthService.isAuthorized ? .green : .red)
+                    }
+
                     if !authManager.isAuthorized {
-                        Button("Request Authorization") {
+                        Button("Request Screen Time Access") {
                             authManager.requestAuthorization()
+                        }
+                    }
+
+                    if !healthService.isAuthorized {
+                        Button("Request Health Access") {
+                            Task { await healthService.requestAuthorization() }
                         }
                     }
                 }
 
-                // How It Works
                 Section("How It Works") {
                     VStack(alignment: .leading, spacing: 12) {
                         InstructionRow(number: 1, text: "Create a profile and select apps to block")
-                        InstructionRow(number: 2, text: "Choose an unlock challenge (outdoor photo, book, gym, etc.)")
+                        InstructionRow(number: 2, text: "Set unlock conditions per app — steps, photos, workouts, or time")
                         InstructionRow(number: 3, text: "Tap \"Start Session\" to instantly lock those apps")
-                        InstructionRow(number: 4, text: "Take a real photo matching your challenge to unlock")
+                        InstructionRow(number: 4, text: "Earn each app back by meeting its condition")
                     }
                     .padding(.vertical, 8)
                 }
 
-                // Privacy
                 Section("Privacy") {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Your data stays on your device")
                             .font(.subheadline.bold())
-                        Text("FocusSnap processes all images on-device using Apple's Vision framework. No photos are uploaded to any server. No tracking, no analytics, no ads.")
+                        Text("EarnIt processes all images on-device using Apple's Vision framework. Health data is read from HealthKit and never leaves your device. No tracking, no analytics, no ads.")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     .padding(.vertical, 4)
                 }
 
-                // Support
                 Section("Support") {
                     Link(destination: URL(string: "mailto:support@infinit3dev.com")!) {
                         Label("Contact Support", systemImage: "envelope.fill")
@@ -91,16 +99,10 @@ struct InstructionRow: View {
                 .foregroundColor(.white)
                 .frame(width: 24, height: 24)
                 .background(
-                    LinearGradient(
-                        colors: [.purple, .blue],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                    LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
                 .clipShape(Circle())
-
-            Text(text)
-                .font(.subheadline)
+            Text(text).font(.subheadline)
         }
     }
 }

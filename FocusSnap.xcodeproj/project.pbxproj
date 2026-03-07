@@ -27,6 +27,8 @@
 		A10018 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10018; };
 		A10019 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10019; };
 		A10020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10020; };
+		A10021 /* UnlockCondition.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10023; };
+		A10022 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10024; };
 		A20001 /* DeviceActivityMonitorExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20001; };
 		A30001 /* ShieldConfigurationExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B30001; };
 		A40001 /* ShieldActionExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = B40001; };
@@ -108,6 +110,8 @@
 		B30002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B40001 /* ShieldActionExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShieldActionExtension.swift; sourceTree = "<group>"; };
 		B40002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B10023 /* UnlockCondition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockCondition.swift; sourceTree = "<group>"; };
+		B10024 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -184,6 +188,7 @@
 				B10003 /* Challenge.swift */,
 				B10004 /* FocusProfile.swift */,
 				B10005 /* FocusSession.swift */,
+				B10023 /* UnlockCondition.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -213,6 +218,7 @@
 				B10008 /* ProfileManager.swift */,
 				B10009 /* ImageVerificationService.swift */,
 				B10010 /* CameraService.swift */,
+				B10024 /* HealthKitService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -396,6 +402,8 @@
 				A10017 /* SettingsView.swift in Sources */,
 				A10018 /* OnboardingView.swift in Sources */,
 				A10019 /* MainTabView.swift in Sources */,
+				A10021 /* UnlockCondition.swift in Sources */,
+				A10022 /* HealthKitService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -2,10 +2,11 @@ import SwiftUI
 import FamilyControls
 
 @main
-struct FocusSnapApp: App {
+struct EarnItApp: App {
     @StateObject private var authManager = AuthorizationManager()
     @StateObject private var sessionManager = SessionManager()
     @StateObject private var profileManager = ProfileManager()
+    @StateObject private var healthService = HealthKitService()
 
     var body: some Scene {
         WindowGroup {
@@ -13,8 +14,12 @@ struct FocusSnapApp: App {
                 .environmentObject(authManager)
                 .environmentObject(sessionManager)
                 .environmentObject(profileManager)
+                .environmentObject(healthService)
                 .onAppear {
                     authManager.requestAuthorization()
+                }
+                .task {
+                    await healthService.requestAuthorization()
                 }
         }
     }

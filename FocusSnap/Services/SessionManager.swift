@@ -2,14 +2,17 @@ import Foundation
 import ManagedSettings
 import FamilyControls
 
-/// Manages focus sessions — starting (locking apps) and ending (unlocking via photo)
+/// Manages focus sessions — starting (locking apps) and ending (unlocking via conditions)
+/// Supports both simple mode (one challenge unlocks all) and per-app rules
 @MainActor
 class SessionManager: ObservableObject {
     @Published var activeSession: FocusSession?
     @Published var sessionHistory: [FocusSession] = []
+    @Published var activeProfile: FocusProfile?
+    @Published var unlockedRuleIds: Set<UUID> = []
 
     private let store = ManagedSettingsStore()
-    private let storageKey = "focusSnap.sessionHistory"
+    private let storageKey = "earnit.sessionHistory"
 
     init() {
         loadHistory()
@@ -18,13 +21,19 @@ class SessionManager: ObservableObject {
 
     // MARK: - Start Session (Lock Apps)
 
-    /// One-tap lock — shields all apps in the profile
+    /// One-tap lock — shields all apps across all rules in the profile
     func startSession(profile: FocusProfile) {
-        // Apply shields to selected apps
-        store.shield.applications = profile.activitySelection.applicationTokens
+        activeProfile = profile
+        unlockedRuleIds = []
+
+        // Shield all apps from all rules + fallback selection
+        let allAppTokens = profile.allBlockedAppTokens
+        let allCategoryTokens = profile.allBlockedCategoryTokens
+
+        store.shield.applications = allAppTokens
         store.shield.applicationCategories = ShieldSettings
             .ActivityCategoryPolicy
-            .specific(profile.activitySelection.categoryTokens)
+            .specific(allCategoryTokens)
         store.shield.webDomains = profile.activitySelection.webDomainTokens
 
         // Create session record
@@ -33,9 +42,53 @@ class SessionManager: ObservableObject {
         saveActiveSession()
     }
 
-    // MARK: - End Session (Unlock Apps)
+    // MARK: - Per-App Unlock
 
-    /// Removes all shields — called after successful photo verification
+    /// Unlock a specific rule's apps (e.g., user hit 10K steps, unlock Twitter)
+    func unlockRule(_ rule: AppUnlockRule) {
+        unlockedRuleIds.insert(rule.id)
+
+        // Recalculate which apps should still be shielded
+        guard let profile = activeProfile else { return }
+        reapplyShields(for: profile)
+
+        // If all rules are unlocked, end the session
+        if profile.usesPerAppRules {
+            let allRuleIds = Set(profile.unlockRules.map { $0.id })
+            if unlockedRuleIds.isSupersetOf(allRuleIds) {
+                endSession()
+            }
+        }
+    }
+
+    /// Recalculate shields based on which rules are still locked
+    private func reapplyShields(for profile: FocusProfile) {
+        if profile.usesPerAppRules {
+            var remainingApps = Set<ApplicationToken>()
+            var remainingCategories = Set<ActivityCategoryToken>()
+
+            for rule in profile.unlockRules {
+                if !unlockedRuleIds.contains(rule.id) {
+                    remainingApps.formUnion(rule.applicationTokens)
+                    remainingCategories.formUnion(rule.categoryTokens)
+                }
+            }
+
+            if remainingApps.isEmpty && remainingCategories.isEmpty {
+                store.shield.applications = nil
+                store.shield.applicationCategories = nil
+            } else {
+                store.shield.applications = remainingApps
+                store.shield.applicationCategories = ShieldSettings
+                    .ActivityCategoryPolicy
+                    .specific(remainingCategories)
+            }
+        }
+    }
+
+    // MARK: - End Session (Unlock All)
+
+    /// Removes all shields — called after all conditions met or simple mode unlock
     func endSession(wasEmergency: Bool = false) {
         store.shield.applications = nil
         store.shield.applicationCategories = nil
@@ -46,6 +99,8 @@ class SessionManager: ObservableObject {
             session.wasEmergencyUnlock = wasEmergency
             sessionHistory.insert(session, at: 0)
             activeSession = nil
+            activeProfile = nil
+            unlockedRuleIds = []
             saveHistory()
             clearActiveSession()
         }
@@ -105,18 +160,26 @@ class SessionManager: ObservableObject {
 
     private func saveActiveSession() {
         if let data = try? JSONEncoder().encode(activeSession) {
-            UserDefaults.standard.set(data, forKey: "focusSnap.activeSession")
+            UserDefaults.standard.set(data, forKey: "earnit.activeSession")
+        }
+        if let data = try? JSONEncoder().encode(activeProfile) {
+            UserDefaults.standard.set(data, forKey: "earnit.activeProfile")
         }
     }
 
     private func loadActiveSession() {
-        if let data = UserDefaults.standard.data(forKey: "focusSnap.activeSession"),
+        if let data = UserDefaults.standard.data(forKey: "earnit.activeSession"),
            let session = try? JSONDecoder().decode(FocusSession.self, from: data) {
             activeSession = session
+        }
+        if let data = UserDefaults.standard.data(forKey: "earnit.activeProfile"),
+           let profile = try? JSONDecoder().decode(FocusProfile.self, from: data) {
+            activeProfile = profile
         }
     }
 
     private func clearActiveSession() {
-        UserDefaults.standard.removeObject(forKey: "focusSnap.activeSession")
+        UserDefaults.standard.removeObject(forKey: "earnit.activeSession")
+        UserDefaults.standard.removeObject(forKey: "earnit.activeProfile")
     }
 }

@@ -39,17 +39,17 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
         ShieldConfiguration(
             backgroundBlurStyle: .systemUltraThinMaterialDark,
             backgroundColor: UIColor.black.withAlphaComponent(0.9),
-            icon: UIImage(systemName: "camera.viewfinder"),
+            icon: UIImage(systemName: "lock.open.rotation"),
             title: ShieldConfiguration.Label(
                 text: "\(title) is locked",
                 color: .white
             ),
             subtitle: ShieldConfiguration.Label(
-                text: "Open FocusSnap and take a photo to unlock",
+                text: "Open EarnIt to complete your challenge and unlock",
                 color: .lightGray
             ),
             primaryButtonLabel: ShieldConfiguration.Label(
-                text: "Open FocusSnap",
+                text: "Open EarnIt",
                 color: .white
             ),
             primaryButtonBackgroundColor: UIColor.purple,

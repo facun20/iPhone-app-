@@ -9,7 +9,7 @@ struct OnboardingView: View {
 
             // Logo
             VStack(spacing: 16) {
-                Image(systemName: "camera.viewfinder")
+                Image(systemName: "lock.open.rotation")
                     .font(.system(size: 80))
                     .foregroundStyle(
                         LinearGradient(
@@ -19,7 +19,7 @@ struct OnboardingView: View {
                         )
                     )
 
-                Text("FocusSnap")
+                Text("EarnIt")
                     .font(.system(size: 42, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
 
@@ -32,18 +32,18 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 20) {
                 FeatureRow(
                     icon: "lock.fill",
-                    title: "One-Tap Lock",
-                    description: "Instantly block distracting apps with a single tap"
+                    title: "Lock Any App",
+                    description: "Block distracting apps until you earn them back"
                 )
                 FeatureRow(
-                    icon: "camera.fill",
-                    title: "Photo Unlock",
-                    description: "Complete a real-world challenge to earn your apps back"
+                    icon: "figure.walk",
+                    title: "Set Your Terms",
+                    description: "Steps, photos, workouts, or time — you choose per app"
                 )
                 FeatureRow(
                     icon: "chart.bar.fill",
-                    title: "Track Progress",
-                    description: "Build focus streaks and see your growth"
+                    title: "Build Habits",
+                    description: "Track streaks and see your real-world progress"
                 )
             }
             .padding(.horizontal, 24)
@@ -77,7 +77,7 @@ struct OnboardingView: View {
                         .multilineTextAlignment(.center)
                 }
 
-                Text("FocusSnap needs Screen Time access to block apps")
+                Text("EarnIt needs Screen Time access to manage app locks")
                     .font(.caption)
                     .foregroundColor(.gray)
             }

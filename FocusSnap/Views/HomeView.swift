@@ -4,24 +4,17 @@ import FamilyControls
 struct HomeView: View {
     @EnvironmentObject var sessionManager: SessionManager
     @EnvironmentObject var profileManager: ProfileManager
+    @EnvironmentObject var healthService: HealthKitService
     @State private var selectedProfile: FocusProfile?
     @State private var showProfilePicker = false
-    @State private var showAppPicker = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header
                     headerSection
-
-                    // Quick Start Button
                     startSessionSection
-
-                    // Active profiles
                     profileCardsSection
-
-                    // Recent sessions
                     recentSessionsSection
                 }
                 .padding()
@@ -40,13 +33,12 @@ struct HomeView: View {
                     Text(greeting)
                         .font(.title2)
                         .foregroundColor(.gray)
-                    Text("Ready to focus?")
+                    Text("Ready to earn it?")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                 }
                 Spacer()
 
-                // Streak badge
                 VStack(spacing: 4) {
                     Text("\(sessionManager.currentStreak)")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -67,9 +59,7 @@ struct HomeView: View {
     private var startSessionSection: some View {
         VStack(spacing: 12) {
             if let profile = selectedProfile ?? profileManager.profiles.first {
-                Button(action: {
-                    startSession(with: profile)
-                }) {
+                Button(action: { startSession(with: profile) }) {
                     HStack(spacing: 16) {
                         Image(systemName: "lock.fill")
                             .font(.title2)
@@ -77,24 +67,25 @@ struct HomeView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Start Session")
                                 .font(.title3.bold())
-                            Text("\(profile.name) — \(profile.challenge.type.displayName)")
-                                .font(.subheadline)
-                                .opacity(0.8)
+
+                            if profile.usesPerAppRules {
+                                Text("\(profile.name) — \(profile.unlockRules.count) rules")
+                                    .font(.subheadline)
+                                    .opacity(0.8)
+                            } else {
+                                Text("\(profile.name) — \(profile.challenge.type.displayName)")
+                                    .font(.subheadline)
+                                    .opacity(0.8)
+                            }
                         }
 
                         Spacer()
-
-                        Image(systemName: "chevron.right")
-                            .font(.headline)
+                        Image(systemName: "chevron.right").font(.headline)
                     }
                     .foregroundColor(.white)
                     .padding(20)
                     .background(
-                        LinearGradient(
-                            colors: [.purple, .blue],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
+                        LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing)
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .shadow(color: .purple.opacity(0.4), radius: 16, y: 8)
@@ -170,16 +161,13 @@ struct HomeView: View {
     }
 
     private func startSession(with profile: FocusProfile) {
-        guard !profile.activitySelection.applicationTokens.isEmpty ||
-              !profile.activitySelection.categoryTokens.isEmpty else {
-            showAppPicker = true
-            return
-        }
+        let hasApps = !profile.allBlockedAppTokens.isEmpty || !profile.allBlockedCategoryTokens.isEmpty
+        guard hasApps else { return }
         sessionManager.startSession(profile: profile)
     }
 }
 
-// MARK: - Profile Card
+// MARK: - Supporting Views
 
 struct ProfileCard: View {
     let profile: FocusProfile
@@ -191,24 +179,24 @@ struct ProfileCard: View {
                 Image(systemName: profile.icon)
                     .font(.title2)
                     .foregroundStyle(
-                        LinearGradient(
-                            colors: [.purple, .blue],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
 
                 Text(profile.name)
                     .font(.subheadline.bold())
                     .foregroundColor(.white)
 
-                HStack(spacing: 4) {
-                    Image(systemName: profile.challenge.type.icon)
+                if profile.usesPerAppRules {
+                    Text("\(profile.unlockRules.count) rules")
                         .font(.caption2)
-                    Text(profile.challenge.type.displayName)
-                        .font(.caption2)
+                        .foregroundColor(.gray)
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: profile.challenge.type.icon).font(.caption2)
+                        Text(profile.challenge.type.displayName).font(.caption2)
+                    }
+                    .foregroundColor(.gray)
                 }
-                .foregroundColor(.gray)
             }
             .padding(16)
             .frame(width: 130, height: 130)
@@ -217,8 +205,6 @@ struct ProfileCard: View {
         }
     }
 }
-
-// MARK: - Session Row
 
 struct SessionRow: View {
     let session: FocusSession
@@ -258,8 +244,6 @@ struct SessionRow: View {
     }
 }
 
-// MARK: - Profile Picker Sheet
-
 struct ProfilePickerSheet: View {
     @EnvironmentObject var profileManager: ProfileManager
     @Binding var selectedProfile: FocusProfile?
@@ -278,18 +262,22 @@ struct ProfilePickerSheet: View {
                             .foregroundColor(.purple)
 
                         VStack(alignment: .leading) {
-                            Text(profile.name)
-                                .font(.headline)
-                            Text(profile.challenge.type.displayName)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                            Text(profile.name).font(.headline)
+                            if profile.usesPerAppRules {
+                                Text("\(profile.unlockRules.count) unlock rules")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text(profile.challenge.type.displayName)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
                         }
 
                         Spacer()
 
                         if selectedProfile?.id == profile.id {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.purple)
+                            Image(systemName: "checkmark.circle.fill").foregroundColor(.purple)
                         }
                     }
                 }

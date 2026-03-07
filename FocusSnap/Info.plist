@@ -3,13 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>FocusSnap needs camera access to verify your unlock challenge photo</string>
+	<string>EarnIt needs camera access to verify your unlock challenge photo</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>EarnIt reads your step count, distance, and workout data to track unlock conditions</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>focussnap</string>
+				<string>earnit</string>
 			</array>
 		</dict>
 	</array>
