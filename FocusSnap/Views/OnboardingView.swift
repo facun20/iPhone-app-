@@ -1,0 +1,119 @@
+import SwiftUI
+
+struct OnboardingView: View {
+    @EnvironmentObject var authManager: AuthorizationManager
+
+    var body: some View {
+        VStack(spacing: 32) {
+            Spacer()
+
+            // Logo
+            VStack(spacing: 16) {
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 80))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.purple, .blue],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                Text("FocusSnap")
+                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+
+                Text("by infinit3 Development")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+
+            // Feature list
+            VStack(alignment: .leading, spacing: 20) {
+                FeatureRow(
+                    icon: "lock.fill",
+                    title: "One-Tap Lock",
+                    description: "Instantly block distracting apps with a single tap"
+                )
+                FeatureRow(
+                    icon: "camera.fill",
+                    title: "Photo Unlock",
+                    description: "Complete a real-world challenge to earn your apps back"
+                )
+                FeatureRow(
+                    icon: "chart.bar.fill",
+                    title: "Track Progress",
+                    description: "Build focus streaks and see your growth"
+                )
+            }
+            .padding(.horizontal, 24)
+
+            Spacer()
+
+            // Auth button
+            VStack(spacing: 12) {
+                Button(action: {
+                    authManager.requestAuthorization()
+                }) {
+                    Text("Get Started")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            LinearGradient(
+                                colors: [.purple, .blue],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                }
+
+                if let error = authManager.authorizationError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                }
+
+                Text("FocusSnap needs Screen Time access to block apps")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+        }
+        .background(Color.black.ignoresSafeArea())
+    }
+}
+
+struct FeatureRow: View {
+    let icon: String
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.purple, .blue],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 44)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+        }
+    }
+}
