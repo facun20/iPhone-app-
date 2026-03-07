@@ -1,0 +1,49 @@
+workflows:
+  earnit-ios:
+    name: EarnIt iOS
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      xcode: 15.4
+      cocoapods: default
+      vars:
+        XCODE_PROJECT: "FocusSnap.xcodeproj"
+        XCODE_SCHEME: "FocusSnap"
+        BUNDLE_ID: "com.infinit3dev.focussnap"
+    scripts:
+      - name: Set up code signing
+        script: |
+          # If you've set up code signing in Codemagic dashboard,
+          # uncomment these lines:
+          # keychain initialize
+          # app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE
+          # app-store-connect fetch-signing-files "$BUNDLE_ID.DeviceActivityMonitor" --type IOS_APP_STORE
+          # app-store-connect fetch-signing-files "$BUNDLE_ID.ShieldConfiguration" --type IOS_APP_STORE
+          # app-store-connect fetch-signing-files "$BUNDLE_ID.ShieldAction" --type IOS_APP_STORE
+          # keychain add-certificates
+          # xcode-project use-profiles
+          echo "Code signing will be configured after Apple Developer setup"
+
+      - name: Build iOS app
+        script: |
+          xcodebuild build \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -sdk iphoneos \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO | xcpretty
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+
+    # Uncomment after setting up App Store Connect API key in Codemagic:
+    # publishing:
+    #   app_store_connect:
+    #     auth: integration
+    #     submit_to_testflight: true
