@@ -31,18 +31,15 @@ workflows:
             -scheme "$XCODE_SCHEME" \
             -sdk iphonesimulator \
             -configuration Debug \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -derivedDataPath build/DerivedData \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO | xcpretty
-
-      - name: Collect simulator app
-        script: |
-          APP_PATH=$(find $HOME/Library/Developer/Xcode/DerivedData -name "FocusSnap.app" -path "*/Debug-iphonesimulator/*" | head -1)
-          echo "Found app at: $APP_PATH"
+            COMPILER_INDEX_STORE_ENABLE=NO
+          echo "Build completed. Listing .app files:"
+          find build/DerivedData -name "*.app" -type d
           mkdir -p build/ios/simulator
-          cp -R "$APP_PATH" build/ios/simulator/
+          cp -R build/DerivedData/Build/Products/Debug-iphonesimulator/FocusSnap.app build/ios/simulator/
 
     artifacts:
       - build/ios/simulator/*.app
