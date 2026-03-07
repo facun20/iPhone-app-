@@ -37,8 +37,15 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO | xcpretty
 
+      - name: Collect simulator app
+        script: |
+          APP_PATH=$(find $HOME/Library/Developer/Xcode/DerivedData -name "FocusSnap.app" -path "*/Debug-iphonesimulator/*" | head -1)
+          echo "Found app at: $APP_PATH"
+          mkdir -p build/ios/simulator
+          cp -R "$APP_PATH" build/ios/simulator/
+
     artifacts:
-      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - build/ios/simulator/*.app
       - /tmp/xcodebuild_logs/*.log
 
     # Uncomment after setting up App Store Connect API key in Codemagic:
