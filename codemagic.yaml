@@ -24,23 +24,22 @@ workflows:
           # xcode-project use-profiles
           echo "Code signing will be configured after Apple Developer setup"
 
-      - name: Build iOS app
+      - name: Build iOS app for App Preview (simulator)
         script: |
           xcodebuild build \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
-            -sdk iphoneos \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
             CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             COMPILER_INDEX_STORE_ENABLE=NO | xcpretty
 
     artifacts:
-      - build/ios/ipa/*.ipa
-      - /tmp/xcodebuild_logs/*.log
       - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - /tmp/xcodebuild_logs/*.log
 
     # Uncomment after setting up App Store Connect API key in Codemagic:
     # publishing:
