@@ -235,8 +235,23 @@ struct AddUnlockRuleView: View {
     @State private var unlockHour = 9
     @State private var unlockMinute = 0
     @State private var challengeType: ChallengeType = .outdoor
+    @State private var targetCalories = 200
+    @State private var targetFlights = 5
+    @State private var targetMindfulnessMinutes = 5
+    @State private var mindfulnessLabel = "Meditation"
+    @State private var targetWordCount = 50
+    @State private var journalPrompt = ""
+    @State private var locationName = ""
+    @State private var locationLatitude: Double?
+    @State private var locationLongitude: Double?
+    @State private var showLocationPicker = false
+    @State private var hasDeadline = false
+    @State private var deadlineHour = 17
+    @State private var deadlineMinute = 0
     @State private var appSelection = FamilyActivitySelection()
     @State private var showAppPicker = false
+
+    private let mindfulnessOptions = ["Meditation", "Prayer", "Breathing"]
 
     var body: some View {
         NavigationStack {
@@ -267,34 +282,32 @@ struct AddUnlockRuleView: View {
 
                 // Condition-specific settings
                 Section("Settings") {
-                    switch conditionType {
-                    case .steps:
-                        Stepper("Target: \(targetSteps.formatted()) steps", value: $targetSteps, in: 1000...50000, step: 1000)
-                    case .distance:
-                        Stepper("Target: \(String(format: "%.1f", targetDistanceMiles)) miles", value: $targetDistanceMiles, in: 0.5...26.2, step: 0.5)
-                    case .workout:
-                        Stepper("Target: \(targetWorkoutMinutes) min", value: $targetWorkoutMinutes, in: 5...120, step: 5)
-                    case .timeBased:
-                        Picker("Hour", selection: $unlockHour) {
-                            ForEach(0..<24, id: \.self) { h in
-                                Text("\(h > 12 ? h - 12 : (h == 0 ? 12 : h)) \(h >= 12 ? "PM" : "AM")").tag(h)
+                    conditionSettings
+                }
+
+                // Deadline — available for any condition except timeBased
+                if conditionType != .timeBased {
+                    Section {
+                        Toggle(isOn: $hasDeadline) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Set a Deadline")
+                                    .font(.subheadline.bold())
+                                Text("Must complete by a certain time")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
                         }
-                        Picker("Minute", selection: $unlockMinute) {
-                            ForEach([0, 15, 30, 45], id: \.self) { m in
-                                Text(String(format: ":%02d", m)).tag(m)
+                        .tint(.orange)
+
+                        if hasDeadline {
+                            Picker("Hour", selection: $deadlineHour) {
+                                ForEach(0..<24, id: \.self) { h in
+                                    Text("\(h > 12 ? h - 12 : (h == 0 ? 12 : h)) \(h >= 12 ? "PM" : "AM")").tag(h)
+                                }
                             }
-                        }
-                    case .photo:
-                        ForEach(ChallengeType.allCases) { type in
-                            Button(action: { challengeType = type }) {
-                                HStack {
-                                    Image(systemName: type.icon).foregroundColor(.purple).frame(width: 28)
-                                    Text(type.displayName).foregroundColor(.primary)
-                                    Spacer()
-                                    if challengeType == type {
-                                        Image(systemName: "checkmark.circle.fill").foregroundColor(.purple)
-                                    }
+                            Picker("Minute", selection: $deadlineMinute) {
+                                ForEach([0, 15, 30, 45], id: \.self) { m in
+                                    Text(String(format: ":%02d", m)).tag(m)
                                 }
                             }
                         }
@@ -328,8 +341,101 @@ struct AddUnlockRuleView: View {
                 }
             }
             .familyActivityPicker(isPresented: $showAppPicker, selection: $appSelection)
+            .sheet(isPresented: $showLocationPicker) {
+                LocationPickerView(
+                    locationName: $locationName,
+                    latitude: $locationLatitude,
+                    longitude: $locationLongitude
+                )
+            }
         }
     }
+
+    // MARK: - Condition-Specific Settings
+
+    @ViewBuilder
+    private var conditionSettings: some View {
+        switch conditionType {
+        case .steps:
+            Stepper("Target: \(targetSteps.formatted()) steps", value: $targetSteps, in: 1000...50000, step: 1000)
+
+        case .distance:
+            Stepper("Target: \(String(format: "%.1f", targetDistanceMiles)) miles", value: $targetDistanceMiles, in: 0.5...26.2, step: 0.5)
+
+        case .workout:
+            Stepper("Target: \(targetWorkoutMinutes) min", value: $targetWorkoutMinutes, in: 5...120, step: 5)
+
+        case .timeBased:
+            Picker("Hour", selection: $unlockHour) {
+                ForEach(0..<24, id: \.self) { h in
+                    Text("\(h > 12 ? h - 12 : (h == 0 ? 12 : h)) \(h >= 12 ? "PM" : "AM")").tag(h)
+                }
+            }
+            Picker("Minute", selection: $unlockMinute) {
+                ForEach([0, 15, 30, 45], id: \.self) { m in
+                    Text(String(format: ":%02d", m)).tag(m)
+                }
+            }
+
+        case .photo:
+            ForEach(ChallengeType.allCases) { type in
+                Button(action: { challengeType = type }) {
+                    HStack {
+                        Image(systemName: type.icon).foregroundColor(.purple).frame(width: 28)
+                        Text(type.displayName).foregroundColor(.primary)
+                        Spacer()
+                        if challengeType == type {
+                            Image(systemName: "checkmark.circle.fill").foregroundColor(.purple)
+                        }
+                    }
+                }
+            }
+
+        case .calories:
+            Stepper("Target: \(targetCalories) cal", value: $targetCalories, in: 50...2000, step: 50)
+
+        case .flights:
+            Stepper("Target: \(targetFlights) flights", value: $targetFlights, in: 1...50, step: 1)
+
+        case .mindfulness:
+            Picker("Type", selection: $mindfulnessLabel) {
+                ForEach(mindfulnessOptions, id: \.self) { option in
+                    Text(option).tag(option)
+                }
+            }
+            Stepper("Duration: \(targetMindfulnessMinutes) min", value: $targetMindfulnessMinutes, in: 1...60, step: 1)
+
+        case .journaling:
+            Stepper("Minimum: \(targetWordCount) words", value: $targetWordCount, in: 10...500, step: 10)
+            TextField("Prompt (optional)", text: $journalPrompt)
+
+        case .location:
+            Button(action: { showLocationPicker = true }) {
+                HStack {
+                    Image(systemName: "mappin.circle.fill").foregroundColor(.purple)
+                    if locationName.isEmpty {
+                        Text("Choose a Place").foregroundColor(.primary)
+                    } else {
+                        Text(locationName).foregroundColor(.primary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundColor(.gray)
+                }
+            }
+            if !locationName.isEmpty {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.caption)
+                    Text(locationName)
+                        .font(.caption)
+                        .foregroundColor(.green)
+                }
+            }
+        }
+    }
+
+    // MARK: - Save
 
     private func save() {
         var condition = UnlockCondition(type: conditionType)
@@ -346,6 +452,27 @@ struct AddUnlockRuleView: View {
             condition.unlockAfterMinute = unlockMinute
         case .photo:
             condition.challengeType = challengeType
+        case .calories:
+            condition.targetCalories = targetCalories
+        case .flights:
+            condition.targetFlights = targetFlights
+        case .mindfulness:
+            condition.targetMindfulnessMinutes = targetMindfulnessMinutes
+            condition.mindfulnessLabel = mindfulnessLabel
+        case .journaling:
+            condition.targetWordCount = targetWordCount
+            condition.journalPrompt = journalPrompt.isEmpty ? nil : journalPrompt
+        case .location:
+            condition.locationName = locationName
+            condition.locationLatitude = locationLatitude
+            condition.locationLongitude = locationLongitude
+            condition.locationRadiusMeters = 100
+        }
+
+        // Set deadline if enabled
+        if hasDeadline && conditionType != .timeBased {
+            condition.deadlineHour = deadlineHour
+            condition.deadlineMinute = deadlineMinute
         }
 
         let rule = AppUnlockRule(

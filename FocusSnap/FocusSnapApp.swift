@@ -7,6 +7,7 @@ struct EarnItApp: App {
     @StateObject private var sessionManager = SessionManager()
     @StateObject private var profileManager = ProfileManager()
     @StateObject private var healthService = HealthKitService()
+    @StateObject private var locationService = LocationService()
 
     var body: some Scene {
         WindowGroup {
@@ -15,6 +16,7 @@ struct EarnItApp: App {
                 .environmentObject(sessionManager)
                 .environmentObject(profileManager)
                 .environmentObject(healthService)
+                .environmentObject(locationService)
                 .onAppear {
                     authManager.requestAuthorization()
                 }

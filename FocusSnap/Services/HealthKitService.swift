@@ -1,7 +1,7 @@
 import Foundation
 import HealthKit
 
-/// Reads step count, distance, and workout data from HealthKit to evaluate unlock conditions
+/// Reads step count, distance, workout, calories, and flights data from HealthKit to evaluate unlock conditions
 @MainActor
 class HealthKitService: ObservableObject {
     private let healthStore = HKHealthStore()
@@ -10,6 +10,9 @@ class HealthKitService: ObservableObject {
     @Published var todaySteps: Int = 0
     @Published var todayDistanceMeters: Double = 0
     @Published var todayWorkoutMinutes: Int = 0
+    @Published var todayActiveCalories: Int = 0
+    @Published var todayFlightsClimbed: Int = 0
+    @Published var todayMindfulMinutes: Int = 0
 
     private var updateTimer: Timer?
 
@@ -21,7 +24,10 @@ class HealthKitService: ObservableObject {
         let readTypes: Set<HKObjectType> = [
             HKQuantityType.quantityType(forIdentifier: .stepCount)!,
             HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning)!,
-            HKObjectType.workoutType()
+            HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKQuantityType.quantityType(forIdentifier: .flightsClimbed)!,
+            HKObjectType.workoutType(),
+            HKCategoryType.categoryType(forIdentifier: .mindfulSession)!
         ]
 
         do {
@@ -57,10 +63,16 @@ class HealthKitService: ObservableObject {
             async let steps = fetchTodaySteps()
             async let distance = fetchTodayDistance()
             async let workout = fetchTodayWorkoutMinutes()
+            async let calories = fetchTodayActiveCalories()
+            async let flights = fetchTodayFlightsClimbed()
+            async let mindful = fetchTodayMindfulMinutes()
 
             todaySteps = await steps
             todayDistanceMeters = await distance
             todayWorkoutMinutes = await workout
+            todayActiveCalories = await calories
+            todayFlightsClimbed = await flights
+            todayMindfulMinutes = await mindful
         }
     }
 
@@ -124,6 +136,70 @@ class HealthKitService: ObservableObject {
         }
     }
 
+    // MARK: - Active Calories
+
+    func fetchTodayActiveCalories() async -> Int {
+        guard let calType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else { return 0 }
+
+        let predicate = todayPredicate()
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: calType,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum
+            ) { _, result, _ in
+                let cals = result?.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0
+                continuation.resume(returning: Int(cals))
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    // MARK: - Flights Climbed
+
+    func fetchTodayFlightsClimbed() async -> Int {
+        guard let flightType = HKQuantityType.quantityType(forIdentifier: .flightsClimbed) else { return 0 }
+
+        let predicate = todayPredicate()
+
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: flightType,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum
+            ) { _, result, _ in
+                let flights = result?.sumQuantity()?.doubleValue(for: .count()) ?? 0
+                continuation.resume(returning: Int(flights))
+            }
+            healthStore.execute(query)
+        }
+    }
+
+    // MARK: - Mindful Minutes (from Apple Health)
+
+    func fetchTodayMindfulMinutes() async -> Int {
+        guard let mindfulType = HKCategoryType.categoryType(forIdentifier: .mindfulSession) else { return 0 }
+
+        let predicate = todayPredicate()
+
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: mindfulType,
+                predicate: predicate,
+                limit: HKObjectQueryNoLimit,
+                sortDescriptors: nil
+            ) { _, samples, _ in
+                let sessions = samples as? [HKCategorySample] ?? []
+                let totalMinutes = sessions.reduce(0.0) { total, sample in
+                    total + sample.endDate.timeIntervalSince(sample.startDate) / 60.0
+                }
+                continuation.resume(returning: Int(totalMinutes))
+            }
+            healthStore.execute(query)
+        }
+    }
+
     // MARK: - Condition Evaluation
 
     /// Check if a specific unlock condition is satisfied based on current health data
@@ -178,8 +254,67 @@ class HealthKitService: ObservableObject {
                 isComplete: currentMinutes >= targetMinutes
             )
 
+        case .calories:
+            let target = Double(condition.targetCalories ?? 200)
+            let current = Double(todayActiveCalories)
+            return ConditionProgress(
+                id: condition.id,
+                ruleName: "",
+                condition: condition,
+                currentValue: current,
+                targetValue: target,
+                isComplete: current >= target
+            )
+
+        case .flights:
+            let target = Double(condition.targetFlights ?? 5)
+            let current = Double(todayFlightsClimbed)
+            return ConditionProgress(
+                id: condition.id,
+                ruleName: "",
+                condition: condition,
+                currentValue: current,
+                targetValue: target,
+                isComplete: current >= target
+            )
+
+        case .mindfulness:
+            // Can be satisfied by in-app timer OR HealthKit mindful sessions
+            let target = Double(condition.targetMindfulnessMinutes ?? 5)
+            let current = Double(todayMindfulMinutes)
+            return ConditionProgress(
+                id: condition.id,
+                ruleName: "",
+                condition: condition,
+                currentValue: current,
+                targetValue: target,
+                isComplete: current >= target
+            )
+
         case .photo:
             // Photo conditions are evaluated separately via ImageVerificationService
+            return ConditionProgress(
+                id: condition.id,
+                ruleName: "",
+                condition: condition,
+                currentValue: 0,
+                targetValue: 1,
+                isComplete: false
+            )
+
+        case .journaling:
+            // Journaling conditions are evaluated via JournalingView word count
+            return ConditionProgress(
+                id: condition.id,
+                ruleName: "",
+                condition: condition,
+                currentValue: 0,
+                targetValue: Double(condition.targetWordCount ?? 50),
+                isComplete: false
+            )
+
+        case .location:
+            // Location conditions are evaluated via LocationService
             return ConditionProgress(
                 id: condition.id,
                 ruleName: "",

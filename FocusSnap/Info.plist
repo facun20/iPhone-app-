@@ -5,7 +5,11 @@
 	<key>NSCameraUsageDescription</key>
 	<string>EarnIt needs camera access to verify your unlock challenge photo</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>EarnIt reads your step count, distance, and workout data to track unlock conditions</string>
+	<string>EarnIt reads your step count, distance, calories, flights climbed, workout, and mindfulness data to track unlock conditions</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>EarnIt saves your completed meditation and prayer sessions to Apple Health</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>EarnIt uses your location to verify you arrived at your chosen place (gym, school, office) to unlock your apps</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -5,10 +5,15 @@ struct LockedView: View {
     @EnvironmentObject var sessionManager: SessionManager
     @EnvironmentObject var profileManager: ProfileManager
     @EnvironmentObject var healthService: HealthKitService
+    @EnvironmentObject var locationService: LocationService
     @State private var showCamera = false
     @State private var showEmergencyConfirm = false
     @State private var verificationMessage: String?
     @State private var activeCameraRule: AppUnlockRule?
+    @State private var activeMindfulnessRule: AppUnlockRule?
+    @State private var activeJournalingRule: AppUnlockRule?
+    @State private var showMindfulness = false
+    @State private var showJournaling = false
     @State private var pulseAnimation = false
 
     private var activeProfile: FocusProfile? {
@@ -43,10 +48,12 @@ struct LockedView: View {
         )
         .onAppear {
             healthService.startMonitoring()
+            startLocationMonitoringIfNeeded()
             pulseAnimation = true
         }
         .onDisappear {
             healthService.stopMonitoring()
+            locationService.stopMonitoring()
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraCaptureView(
@@ -66,6 +73,30 @@ struct LockedView: View {
                     verificationMessage = reason
                 }
             )
+        }
+        .fullScreenCover(isPresented: $showMindfulness) {
+            if let rule = activeMindfulnessRule {
+                MindfulnessView(
+                    condition: rule.condition,
+                    onComplete: {
+                        showMindfulness = false
+                        sessionManager.unlockRule(rule)
+                        activeMindfulnessRule = nil
+                    }
+                )
+            }
+        }
+        .sheet(isPresented: $showJournaling) {
+            if let rule = activeJournalingRule {
+                JournalingView(
+                    condition: rule.condition,
+                    onComplete: {
+                        showJournaling = false
+                        sessionManager.unlockRule(rule)
+                        activeJournalingRule = nil
+                    }
+                )
+            }
         }
         .alert("Emergency Unlock", isPresented: $showEmergencyConfirm) {
             Button("Cancel", role: .cancel) {}
@@ -213,16 +244,23 @@ struct LockedView: View {
     // MARK: - Helpers
 
     private func getProgress(for rule: AppUnlockRule) -> ConditionProgress {
-        var progress = healthService.evaluateCondition(rule.condition)
-        progress = ConditionProgress(
+        let rawProgress: ConditionProgress
+
+        switch rule.condition.type {
+        case .location:
+            rawProgress = locationService.evaluateCondition(rule.condition)
+        default:
+            rawProgress = healthService.evaluateCondition(rule.condition)
+        }
+
+        return ConditionProgress(
             id: rule.id,
             ruleName: rule.name,
             condition: rule.condition,
-            currentValue: progress.currentValue,
-            targetValue: progress.targetValue,
-            isComplete: progress.isComplete
+            currentValue: rawProgress.currentValue,
+            targetValue: rawProgress.targetValue,
+            isComplete: rawProgress.isComplete
         )
-        return progress
     }
 
     private func handleRuleAction(rule: AppUnlockRule, progress: ConditionProgress) {
@@ -230,10 +268,25 @@ struct LockedView: View {
         case .photo:
             activeCameraRule = rule
             showCamera = true
-        case .steps, .distance, .workout, .timeBased:
+        case .mindfulness:
+            activeMindfulnessRule = rule
+            showMindfulness = true
+        case .journaling:
+            activeJournalingRule = rule
+            showJournaling = true
+        case .steps, .distance, .workout, .timeBased, .calories, .flights, .location:
             if progress.isComplete {
                 sessionManager.unlockRule(rule)
             }
+        }
+    }
+
+    private func startLocationMonitoringIfNeeded() {
+        guard let profile = activeProfile else { return }
+        // Start monitoring for the first location-based rule found
+        if let locationRule = profile.unlockRules.first(where: { $0.condition.type == .location }) {
+            locationService.requestAuthorization()
+            locationService.startMonitoring(condition: locationRule.condition)
         }
     }
 
@@ -252,6 +305,26 @@ struct UnlockRuleCard: View {
     let progress: ConditionProgress
     let isUnlocked: Bool
     let onAction: () -> Void
+
+    /// Whether this condition type needs a dedicated action (camera, timer, journal)
+    private var needsActionButton: Bool {
+        switch rule.condition.type {
+        case .photo, .mindfulness, .journaling:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Whether this condition shows a progress bar
+    private var showsProgressBar: Bool {
+        switch rule.condition.type {
+        case .photo, .mindfulness, .journaling:
+            return false
+        default:
+            return true
+        }
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -277,34 +350,27 @@ struct UnlockRuleCard: View {
                     Text(rule.condition.displaySummary)
                         .font(.subheadline)
                         .foregroundColor(.gray)
+
+                    // Deadline indicator
+                    if let deadlineText = progress.deadlineText {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock.badge.exclamationmark")
+                                .font(.caption2)
+                            Text(deadlineText)
+                                .font(.caption2)
+                        }
+                        .foregroundColor(rule.condition.isDeadlinePassed && !isUnlocked ? .red : .orange)
+                    }
                 }
 
                 Spacer()
 
                 if !isUnlocked {
-                    if rule.condition.type == .photo {
-                        Button(action: onAction) {
-                            Image(systemName: "camera.fill")
-                                .foregroundColor(.white)
-                                .padding(10)
-                                .background(Color.purple)
-                                .clipShape(Circle())
-                        }
-                    } else if progress.isComplete {
-                        Button(action: onAction) {
-                            Text("Claim")
-                                .font(.subheadline.bold())
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.green)
-                                .clipShape(Capsule())
-                        }
-                    }
+                    actionButton
                 }
             }
 
-            if !isUnlocked && rule.condition.type != .photo {
+            if !isUnlocked && showsProgressBar {
                 VStack(spacing: 4) {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
@@ -346,5 +412,55 @@ struct UnlockRuleCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(isUnlocked ? Color.green.opacity(0.3) : Color.clear, lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private var actionButton: some View {
+        switch rule.condition.type {
+        case .photo:
+            Button(action: onAction) {
+                Image(systemName: "camera.fill")
+                    .foregroundColor(.white)
+                    .padding(10)
+                    .background(Color.purple)
+                    .clipShape(Circle())
+            }
+        case .mindfulness:
+            Button(action: onAction) {
+                HStack(spacing: 6) {
+                    Image(systemName: "play.fill").font(.caption)
+                    Text("Start").font(.subheadline.bold())
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Color.indigo)
+                .clipShape(Capsule())
+            }
+        case .journaling:
+            Button(action: onAction) {
+                HStack(spacing: 6) {
+                    Image(systemName: "pencil").font(.caption)
+                    Text("Write").font(.subheadline.bold())
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Color.purple)
+                .clipShape(Capsule())
+            }
+        default:
+            if progress.isComplete {
+                Button(action: onAction) {
+                    Text("Claim")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.green)
+                        .clipShape(Capsule())
+                }
+            }
+        }
     }
 }
